@@ -11,10 +11,10 @@ for sect in config.sections():
       for k,v in config.items(sect):
         if('location') in k:
           print(k,v)
-        try:
-         os.mkdir(v, 0o755)
-        except:
-         pass
+          try:
+           os.mkdir(v, 0o755)
+          except:
+           pass
 
 if __name__ == "__main__":
  from util import createLogger

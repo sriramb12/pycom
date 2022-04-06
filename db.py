@@ -13,12 +13,16 @@ class MftDb:
      self.dbfile = config.get('Settings', 'dbfile')
      self.loadDb()
 
-  def addApprover(self, approver, grp):
-      self.logger.info("approver ", approver, "added for group", grp)
-      print(grp, self.db['SDEApproverGroups'][grp])
-      if approver not in self.db['SDEApproverGroups'][grp]:
-         self.db['SDEApproverGroups'][grp] += [approver]
+  def addApprover(self, approver):
+      self.logger.error("approver ", approver)
+      print(self.db)
+      if approver not in self.db['SDEApprovers']:
+         self.db['SDEApprovers'] += [approver]
 
+  def getApprovers(self, user):
+     l = ' '.join(i+'@nxp.com ' for i in self.db['SDEApprovers'] if i != user)
+     print(l)
+     return l
   def isSdeUser(self, user):
      return user in self.db['SDEUsers']
 
@@ -37,7 +41,7 @@ class MftDb:
     except:
          print("Unable to load ", self.dbfile)
          exit(0)
-    #self.showDb()
+    self.showDb()
 
   def writeDb(self):
     with open(self.dbfile, 'w') as json_file:
@@ -46,17 +50,17 @@ class MftDb:
   def showDb(self):
     print("Users")
     print(self.db['SDEUsers'])
-    print(self.db['SDEApproverGroups'])
+    print(self.db['SDEApprovers'])
 
 if __name__ == "__main__":
   db = MftDb()
   db.addUser('sriram')
   db.addUser('sriram')
-  db.addApprover('anton', 'IP')
-  db.addApprover('matt', 'NonIP')
-  db.addApprover('anton', 'NonIP')
-  db.addApprover('birk', 'IP')
+  db.addApprover('anton')
+  db.addApprover('matt')
+  db.addApprover('anton')
+  db.addApprover('birk')
   db.showDb()
   print(db.isSdeUser('sriram'))
-  print(db.isSdeUser('joe'))
+  print(db.getApprovers('anton'))
   db.writeDb()
