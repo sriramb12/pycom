@@ -6,9 +6,9 @@ This application follows client - server model
 
 Two endusers (clients) will be exchanging files using server as a middle entity
 
-  |---------------|               |--------|               |--------------|
+  |-----------------|               |-----------|               |--------------|
 
-  |  ClientTx |       <---->  | Server | <--->         |  ClientRx |
+  |  ClientTx |       <------>  | Server | <------>         |  ClientRx |
 
   |---------------|               |--------|               |--------------|
 
