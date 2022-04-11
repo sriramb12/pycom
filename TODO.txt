@@ -6,4 +6,4 @@ Complete the project
 
 Add web interface and support for db (for tracking txn)
 
-
+Create a PyPi (package) installer
