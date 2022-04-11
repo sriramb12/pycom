@@ -21,14 +21,15 @@ class MFTServer:
 		self.serverPort = int(config.get("Settings", "icomServerPort"))
 		self.sockServer = socket.socket()
 		#bind host name to socket on pot number
-		self.sockServer.bind(('0.0.0.0', self.serverPort))
+		try:
+			self.sockServer.bind(('0.0.0.0', self.serverPort))
+		except:
+			exit("Server already running?")
 		#socket listening for up to 5 connections
 		try:
 			self.sockServer.listen()
 		except:
-			print("listen error")
-			exit(0)
-		print(socket)
+			exit("listen error")
 		index = 1
 		self.context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
 		#SSL version 2, 3 are insecure so they have been blocked
