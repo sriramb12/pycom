@@ -5,8 +5,15 @@ import socket, ssl
 import threading
 import os
 import time
+import random
+import string
 
-BASE_DIR = './'
+
+def getFileName():
+	char_set = string.ascii_uppercase
+	num_set = string.digits
+	return ''.join(random.sample(char_set*4, 4)) + ''.join(random.sample(num_set*4, 4)) +'X'
+
 
 def decryptFile(fileName,key):
 	f = Fernet(key)
