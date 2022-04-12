@@ -5,10 +5,12 @@
 import socket, ssl, pprint, sys, pickle
 import os
 from time import time
+from conf import config
 
 class Client:
-	def __init__(self, host, port):
+	def __init__(self, args):
 		self.header = {}
+		self.args = args
 		self.chunkSize = 1024
 		#create socket to handle TCP packets from IPV4 addresses
 		self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -21,17 +23,18 @@ class Client:
 		#Do not check host name matches since cert does not match domain name
 		self.context.check_hostname = False
 		#load CArsa.crt to verify server.crt is authentic
-		self.context.load_verify_locations("server.crt")
+			
+		self.context.load_verify_locations(config.get('Settings', 'serverCert'))
 
 		#SSL version 2, 3 are insecure so they have been blocked
 		self.context.options |= ssl.OP_NO_SSLv2
 		self.context.options |= ssl.OP_NO_SSLv3
 
 		#wrap soc in tls to ensure certificate is verified and used
-		self.sslConn = self.context.wrap_socket(self.socket, server_hostname=host) 
+		self.sslConn = self.context.wrap_socket(self.socket, server_hostname=args['server']) 
 		#connect to server via TCP on portNumb
 
-		self.sslConn.connect((host, port))
+		self.sslConn.connect((self.args['server'], self.args['port']))
 	def sendHeader(self):
 		msg = pickle.dumps(self.header)
 		print(self.header)
@@ -72,13 +75,13 @@ class Client:
 		self.sendHeader()
 
 	#send
-	def put(self, fileName, txnId, sender):
+	def put(self):
 		self.header["cmd"] = 'put'
-		self.header["fileName"] = fileName
-		self.header["fileSize"] = os.path.getsize(filename)
-		self.header["txnid"] = txnId
-		self.header["sender"] = sender
-		self.header["filename"] = fileName
+		self.header["fileName"] = self.args['file']
+		self.header["fileSize"] = os.path.getsize(self.args['file'])
+		self.header["txnid"] = self.args['txnId']
+		self.header["sender"] = self.args['sender']
+		self.header["receivers"] = self.args['receivers']
 		self.sendHeader()
 		self.sendData()
 

@@ -3,6 +3,8 @@
 #Create server side socket to receive file transfer and write to  file
 #Allow up to 5 concurrent connections to server using threads
 #Receive data and write to file then close file.
+
+from conf import config
 import socket, ssl, sys, pickle
 import threading
 
@@ -13,8 +15,10 @@ except:
   pass
 class MftServer:
 	def __init__(self):
+		certfile = config.get("Settings", "certfile")
+		keyfile = config.get("Settings", "keyfile")
 		self.context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-		self.context.load_cert_chain(certfile="server.crt", keyfile="server.pem")
+		self.context.load_cert_chain(certfile=certfile, keyfile=keyfile)
 		#SSL version 2, 3 are insecure so they have been blocked
 		self.context.options |= ssl.OP_NO_SSLv2
 		self.context.options |= ssl.OP_NO_SSLv3

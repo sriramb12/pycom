@@ -145,10 +145,17 @@ if __name__ == "__main__":
 	minNoteSz = int(config.get('Settings', 'noteSizeMin'))
 	db = MftDb()
 	my_parser = argparse.ArgumentParser(description="Send files using icom application to/from NXP.com")
+	cmdGrp = parser.add_mutually_exclusive_group(required=True)
+	cmdGrp.add_argument("--put", action="store_true")
+	cmdGrp.add_argument("--get", action="store_false")
+	cmdGrp.add_argument("--query", action="store_false")
+	my_parser.parse_args('--put')
+	my_parser.parse_args('--get')
+	my_parser.parse_args('--qry')
+	my_parser.parse_args(['--put', '--get', '--qry'])
 
 	# Add the arguments
 	my_parser.add_argument('--file', '-f', action='store', type=str, required=True)
-	my_parser.add_argument('--sender', '-s', action='store', type=str, required=True)
 	my_parser.add_argument('--recipients','-r', nargs='+', required=True, help='list of reciepients (emails) separated by comma')
 	notesHelp = "Enter a message about the transfer or specify a detailed notes in a file (" + str(maxNoteSz) + ")kb)"
 	my_parser.add_argument('--notes', choices=('file', 'message'), required=True, help="Enter a message about the transfer or specify a detailed notes in a file")

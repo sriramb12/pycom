@@ -10,7 +10,7 @@ except:
 for sect in config.sections():
       for k,v in config.items(sect):
         if('location') in k:
-          print(k,v)
+          #print(k,v)
           try:
            os.mkdir(v, 0o755)
           except:
