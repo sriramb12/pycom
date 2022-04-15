@@ -7,17 +7,16 @@ import argparse
 from db import MftDb
 from util import createLogger
 from time import time
-from senddata import send
 from args import cliparser
 from tlsClient import Client
 
 
-class MFTSender:
+class MFTClient:
 	def __init__(self, args):
 		self.emailSuffix = '@nxp.com'
-		self.logger = createLogger("mft_send")
+		self.logger = createLogger("mft_client")
 		self.args = args
-		self.args['txnId'] = str(time())
+		print("init", self.args['cmd'])
 		try:
 			self.args['server'] = config.get('Settings', 'icomServer')
 			self.args['port'] = int(config.get('Settings', 'icomServerPort'))
@@ -78,7 +77,28 @@ class MFTSender:
 		pass
 		#for internalRx in self.internalRecipients:
 	def process(self):
-		self.logger.error("process: txnid %s", self.args['txnId'])
+		cmd = self.args['cmd']
+		if cmd == 'put':
+			self.processPut()
+			return
+		if cmd == 'get':
+			self.processGet()
+			return
+		self.processQuery()
+		return
+	def processGet(self):
+		self.logger.error("processGet %s", self.args['file'])
+		client = Client(self.args)
+		client.get()
+		return
+	def processQuery(self):
+		self.logger.error("processQuery %s", self.args['txnid'])
+		client = Client(self.args)
+		client.query()
+		return
+	def processPut(self):
+		self.args['txnId'] = str(time())
+		self.logger.error("processPut: txnid %s", self.args['txnId'])
 		if not self.processRecipients():
 			self.logger.error("failed")
 			return False
@@ -99,7 +119,7 @@ class MFTSender:
 		if self.egressRecipients:
 			self.requestApproval()
 		if self.internalRecipients or self.egressRecipients:
-			self.transferToRepo()
+			self.sendToServer()
 	def requestApproval(self):
 			sender = self.args['sender']
 			appreqeml = config.get('Settings', 'approvalEmail')
@@ -118,7 +138,7 @@ class MFTSender:
 				for k,v in d.items():
 					print(k,v)
 					buf = buf.replace(k,v)
-	def transferToRepo(self):
+	def sendToServer(self):
 		#self.logger.error("Transfer to repo: ", self.args['file'], " MB")
 		client = Client(self.args)
 		client.put()
@@ -154,15 +174,5 @@ if __name__ == "__main__":
 
 	db = MftDb()
 	cmdArgs = cliparser()
-	if cmdArgs['cmd'] == 'put':
-		mftSend = MFTSender(cmdArgs)
-		mftSend.process()
-
-		exit(0)
-
-	client = Client(host, port)
-	if cmdArgs['cmd'] == 'get':
-		client.get(cmdArgs)
-	else:
-		client.query(cmdArgs)
-
+	mftClient = MFTClient(cmdArgs)
+	mftClient.process()

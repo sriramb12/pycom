@@ -4,7 +4,7 @@
 #Once connection is establised send file data until entirely sent then close connection.
 import socket, ssl, pprint, sys, pickle
 import os
-from time import time
+from time import time, sleep
 from conf import config
 
 class Client:
@@ -33,8 +33,10 @@ class Client:
 		#wrap soc in tls to ensure certificate is verified and used
 		self.sslConn = self.context.wrap_socket(self.socket, server_hostname=args['server']) 
 		#connect to server via TCP on portNumb
-
-		self.sslConn.connect((self.args['server'], self.args['port']))
+		try:		
+			self.sslConn.connect((self.args['server'], self.args['port']))
+		except:
+			exit('Failed to connect to server ' + self.args['server'] + ":" +str(self.args['port']))
 	def sendHeader(self):
 		msg = pickle.dumps(self.header)
 		print(self.header)
@@ -50,6 +52,7 @@ class Client:
 			#read remaining bytes until EOF
 			data = fh.read(self.chunkSize)
 			total += len(data)
+			sleep(4)
 			if not total%1024:
 				print(".")
 			self.sslConn.send(data)
@@ -60,21 +63,24 @@ class Client:
 		print('File '+ fileName + ' sending complete :', total, ' bytes')
 
 	#recv
-	def query(self, txnId, fileName = ''):
+	def query(self):
 		self.header["cmd"] = 'query'
-		self.header["txnid"] = txnId
-		self.header["fileName"] = fileName
-		
-	def get(self, fileName, receiver):
-		self.header["cmd"] = 'get'
-		self.header["fileName"] = fileName
-		self.header["fileSize"] = os.path.getsize(filename)
-		self.header["txnid"] = txnId
-		self.header["receiver"] = receiver
-		self.header["filename"] = self.fileName
+		self.header["txnid"] = self.args['txnId']
 		self.sendHeader()
-
-	#send
+	def get(self):
+		self.header["cmd"] = 'get'
+		self.header["fileName"] = self.args['file']
+		self.sendHeader()
+		f = open(self.header["fileName"], 'wb')
+		while True:
+			data = self.sslConn.recv(1000)
+			print("rx", len(data))
+			f.write(data)
+			if not len(data):
+				f.close()
+				break
+		print('End Of File received, closing connection...')
+		print('-----------------------------------------\n')
 	def put(self):
 		self.header["cmd"] = 'put'
 		self.header["fileName"] = self.args['file']

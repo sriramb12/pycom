@@ -1,7 +1,7 @@
 #Server side of file transfer using TLS
 #Load Server Certificate to be shared via TLS handshake to client
 
-import socket, ssl
+import socket, ssl, pickle
 import threading
 import os
 import time
@@ -10,32 +10,38 @@ class MFTServer:
 	def __init__(self):
 		certfile = config.get("Settings", "certfile")
 		keyfile = config.get("Settings", "keyfile")
+		self.packetSize = int(config.get("Settings", "packetSize"))
 		self.context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
 		try:
 			self.context.load_cert_chain(certfile=certfile, keyfile= keyfile)
 		except:
 			print("Error in loading cert")
 			exit(0)
-	def listen(self):
+
+		#SSL version 2, 3 are insecure so they have been blocked
+		self.context.options |= ssl.OP_NO_SSLv2
+		self.context.options |= ssl.OP_NO_SSLv3
+
 		#create socket object
+		self.srvSocket = socket.socket()
+		#bind host name to socket on pot number
 		self.serverPort = int(config.get("Settings", "icomServerPort"))
+		#socket listening for up to 5 connections
+		self.srvSocket.listen(5)
+		self.repository = 'run/repo/'
+
+		#create socket object
 		self.sockServer = socket.socket()
 		#bind host name to socket on pot number
 		try:
 			self.sockServer.bind(('0.0.0.0', self.serverPort))
 		except:
-			exit("Server already running?")
+			exit("Server already running on port:" + str(self.serverPort))
 		#socket listening for up to 5 connections
 		try:
 			self.sockServer.listen()
 		except:
 			exit("listen error")
-		index = 1
-		self.context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
-		#SSL version 2, 3 are insecure so they have been blocked
-		self.context.options |= ssl.OP_NO_SSLv2
-		self.context.options |= ssl.OP_NO_SSLv3
-		#self.socket = self.listen('0.0.0.0', self.serverPort)
 
 	def decryptFile(fileName,key):
 		f = Fernet(key)
@@ -49,42 +55,72 @@ class MFTServer:
 			file.write(decrypted_data)
 		return encFile
 	
-	def handle_client(the_socket):
-		#make socket non blocking
-		the_socket.setblocking(0)
-		f = open('data.txt' , 'wb')
-		data='';
-		
-		#beginning time
-		begin=time.time()
-		i=0
+	def sendFile(self, streamSock):
+		fileName = self.repository + self.header["fileName"]
+		print("SEnding file", fileName) 
+		fh = None
+		fh = open(fileName, 'rb')
+		'''
+		try:
+			fh = open(fileName, 'rb')
+		except:
+			exit("no such file in repository: " + fileName)
+		'''
+		total= 0
+		print("sending file", fileName) 
 		while True:
-			#if you got some data, then break after timeout
-			if time.time()-begin > 2:
-				break
+			#send data to bound host
+			#read remaining bytes until EOF
+			data = fh.read(self.packetSize)
+			total += len(data)
+			if not total%1024:
+				print(".")
+			streamSock.send(data)
+			if len(data) < self.packetSize:
+					streamSock.close()
+					fh.close()
+					break
+		print('File '+ fileName + ' sending complete :', total, ' bytes')
+			
 		
-			#if you got no data at all, wait a little longer, twice the timeout
-			elif time.time()-begin > 2*2:
-				break
-		
-			#recv something
+	def recvFile(self, stream):
+		fname = self.repository + self.header["fileName"].split('/')[-1]
+		f = open(fname, 'wb')
+		print("recv file ", fname)
+		while True:
 			try:
-				data = the_socket.recv(8192)
-				#data = b'\xC3\xA9'
-				if data:
-					f.write(data)
-					#change the beginning time for measurement
-					begin=time.time()
-					print(len(data))
-					i+=1
-				else:
-					#sleep for sometime to indicate a gap
-					time.sleep(0.1)
+				data = stream.recv(self.packetSize)
+				print("rx", len(data))
+				f.write(data)
 			except:
-				pass
-	
+				#write data from stream.recv(..) to file
+				break
+			if not len(data):
+				f.close()
+				break
+		print('End Of File received, closing connection...')
+		print('-----------------------------------------\n')
+		
+	def handleClient(self, stream):
+		cmds = ['get', 'put', 'query']
+		MAX_SZ=1024*1024
+		msg = stream.recv()
+		print(len(msg))
+		self.header = pickle.loads(msg)
+		cmd = self.header["cmd"]
+		print(self.header)
+		print("--------")
+		if cmd in cmds:
+			print("cmd:", cmd)
+		else:
+			print("unknown cmd: "+ cmd)
+			exit(0)
+		if cmd == 'put':
+			return self.recvFile(stream)
+		if cmd == 'get':
+			return self.sendFile(stream)
+
 	def startServer(self):
-		self.listen()
 		while True:
 			newSocket, fromaddr = self.sockServer.accept()
 			streamSock = self.context.wrap_socket(newSocket, server_side=True)
@@ -93,7 +129,7 @@ class MFTServer:
 			print("'Connection established from " + str(fromaddr))
 			try:
 				#initalise thread to run handle_client(..) function
-				p1 = threading.Thread(target=handle_client, args=[streamSock])
+				p1 = threading.Thread(target=self.handleClient, args=[streamSock])
 				#start thread
 				p1.start()
 			except Exception as err:

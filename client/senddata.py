@@ -11,7 +11,7 @@ try:
 except:
  inputFile = 'test/64k'
 
-print("sending ", inputFile)
+print("SENding ", inputFile)
 
 def encryptFile(fileName,BASE_DIR,key):
 	f = Fernet(key)
