@@ -56,23 +56,23 @@ class MFTSender:
 	def processRecipients(self):
 		self.logger.error("processRecipients")
 		sender = self.args['sender']
-		for eml in self.args['receivers']:
-			user = eml.split('@')[0]
-			if not validateEmail(eml):
-				self.logger.error("incorrect email " + eml)
+		for rcvr in self.args['receivers']:
+			user = rcvr.split('@')[0]
+			if not validateEmail(rcvr):
+				self.logger.error("incorrect email " + rcvr)
 				exit("60")
 				return False
-			if sender == eml:
+			if sender == rcvr:
 				self.usage("sender can not be recipient?")
-				self.logger.error("sender == eml")
+				self.logger.error("sender == rcvr")
 				exit("65")
 				return False
-			if eml.endswith(self.emailSuffix) and db.isSdeUser(user):
-				print("Rcv:", eml.rstrip(), user)
-				self.internalRecipients += [eml.rstrip()]
+			if rcvr.endswith(self.emailSuffix) and db.isSdeUser(user):
+				print("Rcv:", rcvr.rstrip(), user)
+				self.internalRecipients += [rcvr.rstrip()]
 			else:
 				print("egr ", rcvr)
-				self.egressRecipients += [eml.strip()]
+				self.egressRecipients += [rcvr.strip()]
 		return True
 	def startApproval():
 		pass
@@ -101,17 +101,18 @@ class MFTSender:
 		if self.internalRecipients or self.egressRecipients:
 			self.transferToRepo()
 	def requestApproval(self):
+			sender = self.args['sender']
 			appreqeml = config.get('Settings', 'approvalEmail')
-			approvers = db.getApprovers(self.sender.split('@')[0])
+			approvers = db.getApprovers(sender.split('@')[0])
 			self.logger.error("approvers list: " + approvers)
 			self.logger.error(approvers)
 			recps = ', '.join(i for i in self.egressRecipients)
 			print(recps)
 			d = {"approvers": approvers ,
-				"txnid": self.txnId,
+				"txnid": self.args['txnId'],
 				"senderemail": sender,
 				"recipientemail": recps,
-				"file": self.xferFileName}
+				"file": self.args['file']}
 			with open(appreqeml) as f:
 				buf = f.read()
 				for k,v in d.items():
