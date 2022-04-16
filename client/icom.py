@@ -9,6 +9,8 @@ from util import createLogger
 from time import time
 from args import cliparser
 from tlsClient import Client
+import smtplib
+from email.message import EmailMessage
 
 
 class MFTClient:
@@ -118,31 +120,57 @@ class MFTClient:
 		self.logger.error("to repo")
 		if self.egressRecipients:
 			self.requestApproval()
-		if self.internalRecipients or self.egressRecipients:
+		if self.internalRecipients:
 			self.sendToServer()
-	def requestApproval(self):
-			sender = self.args['sender']
-			appreqeml = config.get('Settings', 'approvalEmail')
-			approvers = db.getApprovers(sender.split('@')[0])
-			self.logger.error("approvers list: " + approvers)
-			self.logger.error(approvers)
-			recps = ', '.join(i for i in self.egressRecipients)
-			print(recps)
-			d = {"approvers": approvers ,
+			self.notifyRecipients()
+
+	def notify():
+		sender = self.args['sender']
+		self.emailTemplate = config.get('Settings', 'notifyRecipientEml')
+		self.emailFillers = {"file": filehandle,
 				"txnid": self.args['txnId'],
-				"senderemail": sender,
-				"recipientemail": recps,
-				"file": self.args['file']}
-			with open(appreqeml) as f:
-				buf = f.read()
-				for k,v in d.items():
-					print(k,v)
-					buf = buf.replace(k,v)
+				"senderemail": sender }
+		self.toList = self.ingressRecipients
+		self.sendEmail()
+		
+		pass
+	def requestApproval(self):
+		sender = self.args['sender']
+		self.emailTemplate = config.get('Settings', 'approvalEmail')
+		self.toList = db.getApprovers(sender.split('@')[0])
+		self.logger.error("approvers list: " + approvers)
+		self.logger.error(approvers)
+		recps = ', '.join(i for i in self.egressRecipients)
+		print(recps)
+
+		self.emailFillers = {"approvers": approvers,
+			"txnid": self.args['txnId'],
+			"senderemail": sender,
+			"recipientemail": recps,
+			"file": self.args['file']}
+		self.sendEmail()
+
+	def sendEmail(self):
+		msg = EmailMessage()
+		with open(self.eml) as f:
+			buf = f.read()
+			for k,v in self.emailFillers.items():
+				print(k,v)
+				buf = buf.replace(k,v)
+			msg.set_content(buf)
+		msg['Subject'] = self.subject
+		msg['From'] = self.icomEmail
+		msg['To'] = recp
+
+		for eml in self.toList:
+			smtplib.SMTP('')
+
+
 	def sendToServer(self):
 		#self.logger.error("Transfer to repo: ", self.args['file'], " MB")
 		client = Client(self.args)
-		client.put()
-		pass
+		self.args['filehandle'] = client.put()
+		self.logger.error("Transfer to repo: " + self.args['file'] + ", " + "handle:" + self.args['filehandle'])
 	def authenticate(self):
 		return True
 

@@ -14,6 +14,7 @@ class Client:
 		self.chunkSize = 1024
 		#create socket to handle TCP packets from IPV4 addresses
 		self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		#self.socket.settimeout(3)
 
 		#custom security settings:
 		#context is TLS protocol
@@ -47,21 +48,20 @@ class Client:
 		fileName = self.header["fileName"]
 		fh = open(fileName, 'rb');
 		total= 0
-		while True:
+		while total < self.header["fileSize"]:
 			#send data to bound host
 			#read remaining bytes until EOF
 			data = fh.read(self.chunkSize)
-			total += len(data)
-			sleep(4)
 			if not total%1024:
 				print(".")
 			self.sslConn.send(data)
-			if len(data) < self.chunkSize:
-					self.sslConn.close()
-					fh.close()
-					break
-		print('File '+ fileName + ' sending complete :', total, ' bytes')
-
+			total += len(data)
+		if total:
+				handle = self.sslConn.recv(50)
+				#self.sslConn.close()
+				handle = pickle.loads(handle)
+				print('File '+ fileName + ' sending complete :', total, ' bytes', "handle", handle)
+				return handle['filehandle']
 	#recv
 	def query(self):
 		self.header["cmd"] = 'query'
@@ -89,7 +89,7 @@ class Client:
 		self.header["sender"] = self.args['sender']
 		self.header["receivers"] = self.args['receivers']
 		self.sendHeader()
-		self.sendData()
+		return self.sendData()
 
 #close connection to server
 if __name__ == '__main__':
